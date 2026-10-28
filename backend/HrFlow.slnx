@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HrFlow.Api.Tests/HrFlow.Api.Tests.csproj" />
+  <Project Path="HrFlow.Api/HrFlow.Api.csproj" />
+</Solution>

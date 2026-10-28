@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hrflow
+      POSTGRES_PASSWORD: hrflow_dev
+      POSTGRES_DB: hrflow
+    ports:
+      - "5433:5432"
+    volumes:
+      - hrflow_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hrflow -d hrflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    profiles: ["app"]
+    build:
+      context: ./backend/HrFlow.Api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hrflow;Username=hrflow;Password=hrflow_dev
+      Cors__Origins__0: http://localhost:3000
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    profiles: ["app"]
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  hrflow_pg:
