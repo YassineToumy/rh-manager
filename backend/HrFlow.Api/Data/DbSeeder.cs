@@ -135,6 +135,142 @@ public static class DbSeeder
         await db.SaveChangesAsync();
     }
 
+    public static async Task EnsureEmployeeSpaceAsync(IServiceProvider services)
+    {
+        var db = services.GetRequiredService<AppDbContext>();
+        var employees = await db.Employees.Include(employee => employee.Manager).Where(employee => employee.UserId != null).ToListAsync();
+        if (employees.Count == 0)
+            return;
+
+        var userIds = employees.Select(employee => employee.UserId!).ToArray();
+        var employeeUserIds = await db.Users
+            .Where(user => userIds.Contains(user.Id) && user.Role == AppRoles.Employee)
+            .Select(user => user.Id)
+            .ToListAsync();
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
+
+        foreach (var employee in employees.Where(employee => employeeUserIds.Contains(employee.UserId!)))
+        {
+            var account = await db.Users.FirstOrDefaultAsync(user => user.Id == employee.UserId);
+            if (account is not null && employee.HireDate < DateOnly.FromDateTime(account.CreatedAt.UtcDateTime).AddDays(-60))
+                account.CreatedAt = new DateTimeOffset(employee.HireDate.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+
+            var pay = await db.EmployeeCompensations.FirstOrDefaultAsync(item => item.EmployeeId == employee.Id);
+            if (pay is null)
+            {
+                pay = new EmployeeCompensation
+                {
+                    EmployeeId = employee.Id,
+                    PositionNumber = employee.InternalCode,
+                    BankRib = "FR76 3000 6000 0112 3456 7890 189",
+                    BaseSalary = 2650m,
+                    Bonus = 180m
+                };
+                db.EmployeeCompensations.Add(pay);
+            }
+            if (employee.InternalCode == "EMP-0002" && string.IsNullOrEmpty(pay.ChipNumber))
+            {
+                pay.ChipNumber = "8933012345678901234";
+                pay.ChipCredit = 20m;
+            }
+
+            if (!await db.SalaryDeposits.AnyAsync(item => item.EmployeeId == employee.Id && item.Year == today.Year && item.Month == today.Month))
+            {
+                db.SalaryDeposits.Add(new SalaryDeposit
+                {
+                    Id = Guid.NewGuid(),
+                    EmployeeId = employee.Id,
+                    Year = today.Year,
+                    Month = today.Month,
+                    IsPaid = false
+                });
+            }
+
+            if (!await db.WeeklyRatings.AnyAsync(item => item.EmployeeId == employee.Id))
+            {
+                var manager = employee.Manager;
+                db.WeeklyRatings.Add(new WeeklyRating
+                {
+                    Id = Guid.NewGuid(),
+                    EmployeeId = employee.Id,
+                    WeekStart = weekStart,
+                    Score = 4,
+                    Comment = "Semaine solide sur les livraisons prévues.",
+                    ManagerName = manager is null ? "Manager" : $"{manager.FirstName} {manager.LastName}"
+                });
+            }
+
+            if (!await db.WorkMissions.AnyAsync(item => item.EmployeeId == employee.Id))
+            {
+                var managerName = employee.Manager is null ? "Manager" : $"{employee.Manager.FirstName} {employee.Manager.LastName}";
+                db.WorkMissions.AddRange(
+                    new WorkMission
+                    {
+                        Id = Guid.NewGuid(),
+                        EmployeeId = employee.Id,
+                        Title = "Livrer le correctif des présences",
+                        Detail = "Fermer les pointages incomplets de la semaine.",
+                        Status = "InProgress",
+                        Comment = "Priorité de la semaine.",
+                        WeekStart = weekStart,
+                        ManagerName = managerName,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    },
+                    new WorkMission
+                    {
+                        Id = Guid.NewGuid(),
+                        EmployeeId = employee.Id,
+                        Title = "Documenter l'API congés",
+                        Detail = "Décrire le calcul du solde pour l'équipe.",
+                        Status = "Backlog",
+                        Comment = "À prendre après le correctif.",
+                        WeekStart = weekStart,
+                        ManagerName = managerName,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    });
+            }
+
+            foreach (var offset in new[] { 0, 2 })
+            {
+                var day = weekStart.AddDays(offset);
+                if (day >= today || await db.AttendanceRecords.AnyAsync(record => record.EmployeeId == employee.Id && record.Date == day))
+                    continue;
+                db.AttendanceRecords.Add(new AttendanceRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EmployeeId = employee.Id,
+                    Date = day,
+                    CheckIn = new TimeOnly(9, 0),
+                    CheckOut = new TimeOnly(17, 0),
+                    Status = AttendanceStatus.Present
+                });
+            }
+
+            var monthStart = new DateOnly(today.Year, today.Month, 1);
+            var hasCompletedDay = await db.AttendanceRecords.AnyAsync(record =>
+                record.EmployeeId == employee.Id
+                && record.Date >= monthStart
+                && record.CheckIn != null
+                && record.CheckOut != null);
+            var sampleDay = monthStart;
+            if (!hasCompletedDay && sampleDay < today && !await db.AttendanceRecords.AnyAsync(record => record.EmployeeId == employee.Id && record.Date == sampleDay))
+            {
+                db.AttendanceRecords.Add(new AttendanceRecord
+                {
+                    Id = Guid.NewGuid(),
+                    EmployeeId = employee.Id,
+                    Date = sampleDay,
+                    CheckIn = new TimeOnly(9, 0),
+                    CheckOut = new TimeOnly(17, 30),
+                    Status = AttendanceStatus.Present
+                });
+            }
+        }
+
+        await db.SaveChangesAsync();
+    }
+
     private static async Task<ApplicationUser> CreateUserAsync(
         UserManager<ApplicationUser> users,
         string email,
@@ -152,7 +288,8 @@ public static class DbSeeder
             LastName = lastName,
             IsActive = true,
             LockoutEnabled = true,
-            Role = role
+            Role = role,
+            CreatedAt = DateTimeOffset.UtcNow
         };
         var result = await users.CreateAsync(user, password);
         if (!result.Succeeded)

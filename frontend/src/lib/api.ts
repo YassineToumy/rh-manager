@@ -28,6 +28,20 @@ export function saveSession(token: string, user: UserProfile) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
+export function updateStoredUser(user: UserProfile) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export async function fetchBlob(path: string) {
+  const token = getToken();
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new ApiError(response.status, "Image indisponible.");
+  return response.blob();
+}
+
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);

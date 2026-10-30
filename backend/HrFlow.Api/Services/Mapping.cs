@@ -56,7 +56,10 @@ public static class Mapping
         request.Status,
         request.DecisionComment,
         request.DecidedAt,
-        request.CreatedAt);
+        request.CreatedAt,
+        request.IsHalfDay,
+        request.HalfDayPart,
+        request.UnpaidDays);
 
     public static Dtos.DocumentDto ToDto(EmployeeDocument document) => new(
         document.Id,

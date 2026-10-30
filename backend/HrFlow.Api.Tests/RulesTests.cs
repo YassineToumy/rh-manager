@@ -35,6 +35,26 @@ public class LeaveRulesTests
     }
 
     [Fact]
+    public void Days_beyond_the_balance_are_taken_from_salary()
+    {
+        Assert.Equal((0m, 1m), LeaveRules.Charge(0, 1));
+        Assert.Equal((0.5m, 0.5m), LeaveRules.Charge(0.5m, 1));
+        Assert.Equal((1.5m, 0m), LeaveRules.Charge(4, 1.5m));
+        Assert.Equal(100m, LeaveRules.SalaryDeduction(2200m, 2026, 1, 1));
+        Assert.Equal(50m, LeaveRules.SalaryDeduction(2200m, 2026, 1, 0.5m));
+    }
+
+    [Fact]
+    public void Leave_grows_by_one_and_a_half_day_each_completed_month()
+    {
+        var created = new DateOnly(2026, 1, 15);
+        Assert.Equal(0, LeaveRules.CompletedMonths(created, new DateOnly(2026, 1, 15)));
+        Assert.Equal(0m, LeaveRules.AccruedLeaveDays(created, new DateOnly(2026, 2, 14)));
+        Assert.Equal(1.5m, LeaveRules.AccruedLeaveDays(created, new DateOnly(2026, 2, 15)));
+        Assert.Equal(4.5m, LeaveRules.AccruedLeaveDays(created, new DateOnly(2026, 4, 20)));
+    }
+
+    [Fact]
     public void Balance_keeps_pending_days_reserved()
     {
         Assert.True(LeaveRules.HasEnoughBalance(allocated: 10, used: 4, pending: 3, requested: 3));

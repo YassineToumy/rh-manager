@@ -10,11 +10,95 @@ export type UserProfile = {
   employeeId: string | null;
 };
 
+export type SalaryAdvance = {
+  id: string;
+  amount: number;
+  reason: string | null;
+  status: string;
+  createdAt: string;
+};
+
+export type WeeklyRating = {
+  id: string;
+  weekStart: string;
+  score: number;
+  comment: string | null;
+  managerName: string;
+};
+
+export type LeaveAccrual = {
+  accountCreatedOn: string;
+  months: number;
+  accruedDays: number;
+  reservedDays: number;
+  remainingDays: number;
+};
+
+export type WeekHours = { weekStart: string; hours: number };
+
+export type Mission = {
+  id: string;
+  title: string;
+  detail: string | null;
+  status: string;
+  comment: string | null;
+  weekStart: string;
+  managerName: string;
+  createdAt: string;
+};
+
+export type TeamMember = { id: string; fullName: string; positionTitle: string };
+export type TeamFollowUp = { missions: Mission[]; ratings: WeeklyRating[] };
+
+export type EmployeeSpace = {
+  positionNumber: string;
+  professionalEmail: string;
+  bankRib: string;
+  baseSalary: number;
+  bonus: number;
+  salaryPaid: boolean;
+  salaryYear: number;
+  salaryMonth: number;
+  hoursThisMonth: number;
+  leaveBalances: LeaveBalance[];
+  leaveRequests: LeaveRequest[];
+  advances: SalaryAdvance[];
+  ratings: WeeklyRating[];
+  chipNumber: string | null;
+  chipCredit: number | null;
+  leave: LeaveAccrual;
+  weeks: WeekHours[];
+  missions: Mission[];
+  salaryCut: { unpaidDays: number; dailyRate: number; amount: number };
+};
+
+export type Account = {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  isActive: boolean;
+  isApproved: boolean;
+  createdAt: string;
+};
+
 export type LoginResponse = {
   accessToken: string;
   expiresAtUtc: string;
   user: UserProfile;
+  requiresTwoFactor?: boolean;
 };
+
+export type AccountSettings = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  twoFactorEnabled: boolean;
+  hasPhoto: boolean;
+};
+
+export type TwoFactorSetup = { sharedKey: string; qrCodeDataUrl: string };
 
 export type Paged<T> = { items: T[]; total: number; page: number; pageSize: number };
 
@@ -97,6 +181,9 @@ export type LeaveRequest = {
   decisionComment: string | null;
   decidedAt: string | null;
   createdAt: string;
+  isHalfDay?: boolean;
+  halfDayPart?: string | null;
+  unpaidDays?: number;
 };
 
 export type Attendance = {

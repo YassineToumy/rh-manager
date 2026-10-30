@@ -19,6 +19,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
 {
     public async Task<PagedResult<EmployeeDto>> ListAsync(EmployeeListQuery query, CancellationToken ct)
     {
+        RequireDirectory();
         var employees = Visible().AsNoTracking()
             .Include(employee => employee.Department)
             .Include(employee => employee.Position)
@@ -46,6 +47,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
 
     public async Task<EmployeeDetailDto> GetAsync(Guid id, CancellationToken ct)
     {
+        RequireDirectory();
         var employee = await Visible()
             .AsNoTracking()
             .Include(item => item.Department)
@@ -192,6 +194,12 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
     }
 
     private IQueryable<Employee> Visible() => EmployeeScope.Visible(db.Employees, current);
+
+    private void RequireDirectory() =>
+        AccessGuard.Require(
+            current.Roles.Contains(AppRoles.Admin)
+            || current.Roles.Contains(AppRoles.Rh)
+            || current.Roles.Contains(AppRoles.Manager));
 
     private async Task<(Department Department, Position Position, Employee? Manager)> LoadAssignmentAsync(
         UpsertEmployeeRequest request,

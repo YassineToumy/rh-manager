@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import Link from "next/link";
 
 export const fieldClass =
-  "mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-3 text-base text-black shadow-[0_8px_24px_rgba(0,0,0,0.06)] outline-none transition duration-300 ease-out placeholder:text-neutral-400 hover:shadow-[0_10px_28px_rgba(0,0,0,0.1)] focus:border-neutral-400 focus:shadow-[0_12px_32px_rgba(0,0,0,0.12)] focus:ring-4 focus:ring-black/5";
+  "mt-2 w-full rounded-xl border border-neutral-200 bg-white px-3.5 py-3 text-base text-black shadow-[0_8px_24px_rgba(0,0,0,0.06)] outline-none transition duration-300 ease-out placeholder:text-neutral-400 hover:shadow-[0_10px_28px_rgba(0,0,0,0.1)] focus:border-neutral-400 focus:shadow-[0_12px_32px_rgba(0,0,0,0.12)] focus:ring-4 focus:ring-black/5 dark:border-neutral-700 dark:bg-neutral-900 dark:text-neutral-100 dark:focus:ring-white/10";
 
 export function AuthShell({
   title,
@@ -14,7 +14,7 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <main className="grid h-screen overflow-hidden bg-white text-black md:grid-cols-2">
+    <main className="grid h-screen overflow-hidden bg-white text-black md:grid-cols-2 dark:bg-neutral-950 dark:text-neutral-100">
       <aside className="relative hidden overflow-hidden bg-black text-white md:flex md:flex-col md:justify-between md:p-10">
         <div className="auth-grid pointer-events-none absolute inset-0" />
         <div className="auth-orb auth-orb-a pointer-events-none absolute" />

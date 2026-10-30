@@ -20,7 +20,7 @@ public record UserProfileDto(
     IReadOnlyList<string> Roles,
     Guid? EmployeeId);
 
-public record LoginResponse(string AccessToken, DateTime ExpiresAtUtc, UserProfileDto User);
+public record LoginResponse(string AccessToken, DateTime ExpiresAtUtc, UserProfileDto User, bool RequiresTwoFactor = false);
 
 public class LoginRequest
 {
@@ -29,6 +29,37 @@ public class LoginRequest
 
     [Required]
     public string Password { get; set; } = string.Empty;
+
+    [MaxLength(8)]
+    public string? TwoFactorCode { get; set; }
+}
+
+public record AccountSettingsDto(string FirstName, string LastName, string Email, bool TwoFactorEnabled, bool HasPhoto);
+
+public class UpdateProfileRequest
+{
+    [Required, MaxLength(80)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required, MaxLength(80)]
+    public string LastName { get; set; } = string.Empty;
+}
+
+public record TwoFactorSetupDto(string SharedKey, string QrCodeDataUrl);
+
+public class TwoFactorCodeRequest
+{
+    [Required, MinLength(6), MaxLength(8)]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class DisableTwoFactorRequest
+{
+    [Required]
+    public string Password { get; set; } = string.Empty;
+
+    [Required, MinLength(6), MaxLength(8)]
+    public string Code { get; set; } = string.Empty;
 }
 
 public class RegisterRequest
@@ -98,6 +129,44 @@ public class SetRoleRequest
 {
     [Required]
     public string Role { get; set; } = string.Empty;
+}
+
+public record AccountDto(
+    string Id,
+    string Email,
+    string FirstName,
+    string LastName,
+    string Role,
+    bool IsActive,
+    bool IsApproved,
+    DateTimeOffset CreatedAt);
+
+public class AccountQuery
+{
+    public string? Role { get; set; }
+    public string? Status { get; set; }
+    public DateOnly? CreatedFrom { get; set; }
+    public DateOnly? CreatedTo { get; set; }
+}
+
+public class UpdateAccountRequest
+{
+    [Required, MaxLength(80)]
+    public string FirstName { get; set; } = string.Empty;
+
+    [Required, MaxLength(80)]
+    public string LastName { get; set; } = string.Empty;
+
+    [Required, EmailAddress, MaxLength(200)]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
+    public string Role { get; set; } = string.Empty;
+}
+
+public class SetApprovalRequest
+{
+    public bool IsApproved { get; set; }
 }
 
 public record DepartmentDto(Guid Id, string Name, string? Description, int EmployeeCount);
@@ -268,7 +337,10 @@ public record LeaveRequestDto(
     LeaveStatus Status,
     string? DecisionComment,
     DateTimeOffset? DecidedAt,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    bool IsHalfDay = false,
+    string? HalfDayPart = null,
+    decimal UnpaidDays = 0);
 
 public class LeaveListQuery
 {
@@ -291,6 +363,11 @@ public class CreateLeaveRequest
 
     [MaxLength(500)]
     public string? Reason { get; set; }
+
+    public bool HalfDay { get; set; }
+
+    [MaxLength(16)]
+    public string? HalfDayPart { get; set; }
 }
 
 public class LeaveDecisionRequest
@@ -476,6 +553,102 @@ public class CompleteReviewRequest
 {
     [Required, MaxLength(2000)]
     public string Comment { get; set; } = string.Empty;
+}
+
+public class ChangePasswordRequest
+{
+    [Required]
+    public string CurrentPassword { get; set; } = string.Empty;
+
+    [Required, MinLength(8)]
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+public record SalaryAdvanceDto(Guid Id, decimal Amount, string? Reason, string Status, DateTimeOffset CreatedAt);
+
+public record WeeklyRatingDto(Guid Id, DateOnly WeekStart, int Score, string? Comment, string ManagerName);
+
+public record LeaveAccrualDto(DateOnly AccountCreatedOn, int Months, decimal AccruedDays, decimal ReservedDays, decimal RemainingDays);
+
+public record WeekHoursDto(DateOnly WeekStart, decimal Hours);
+
+public record MissionDto(
+    Guid Id,
+    string Title,
+    string? Detail,
+    string Status,
+    string? Comment,
+    DateOnly WeekStart,
+    string ManagerName,
+    DateTimeOffset CreatedAt);
+
+public record TeamMemberDto(Guid Id, string FullName, string PositionTitle);
+
+public record TeamFollowUpDto(IReadOnlyList<MissionDto> Missions, IReadOnlyList<WeeklyRatingDto> Ratings);
+
+public class CreateMissionRequest
+{
+    [Required, MaxLength(160)]
+    public string Title { get; set; } = string.Empty;
+
+    [MaxLength(1000)]
+    public string? Detail { get; set; }
+
+    [MaxLength(500)]
+    public string? Comment { get; set; }
+}
+
+public class UpdateMissionRequest
+{
+    [Required]
+    public string Status { get; set; } = "Backlog";
+
+    [MaxLength(500)]
+    public string? Comment { get; set; }
+}
+
+public class SetWeeklyRatingRequest
+{
+    [Required]
+    public DateOnly WeekStart { get; set; }
+
+    [Range(1, 5)]
+    public int Score { get; set; }
+
+    [MaxLength(500)]
+    public string? Comment { get; set; }
+}
+
+public record EmployeeSpaceDto(
+    string PositionNumber,
+    string ProfessionalEmail,
+    string BankRib,
+    decimal BaseSalary,
+    decimal Bonus,
+    bool SalaryPaid,
+    int SalaryYear,
+    int SalaryMonth,
+    decimal HoursThisMonth,
+    IReadOnlyList<LeaveBalanceDto> LeaveBalances,
+    IReadOnlyList<LeaveRequestDto> LeaveRequests,
+    IReadOnlyList<SalaryAdvanceDto> Advances,
+    IReadOnlyList<WeeklyRatingDto> Ratings,
+    string? ChipNumber,
+    decimal? ChipCredit,
+    LeaveAccrualDto Leave,
+    IReadOnlyList<WeekHoursDto> Weeks,
+    IReadOnlyList<MissionDto> Missions,
+    SalaryCutDto SalaryCut);
+
+public record SalaryCutDto(decimal UnpaidDays, decimal DailyRate, decimal Amount);
+
+public class CreateAdvanceRequest
+{
+    [Range(typeof(decimal), "1", "100000")]
+    public decimal Amount { get; set; }
+
+    [MaxLength(500)]
+    public string? Reason { get; set; }
 }
 
 public record NotificationDto(Guid Id, string Title, string Body, DateTimeOffset CreatedAt, DateTimeOffset? ReadAt);

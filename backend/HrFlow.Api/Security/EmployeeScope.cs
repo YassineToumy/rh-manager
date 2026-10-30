@@ -10,11 +10,13 @@ public static class EmployeeScope
             return query;
 
         if (user.EmployeeId is not Guid me)
-            return query.Where(employee => false);
+            return string.IsNullOrEmpty(user.UserId)
+                ? query.Where(employee => false)
+                : query.Where(employee => employee.UserId == user.UserId);
 
         if (user.Roles.Contains(AppRoles.Manager))
-            return query.Where(employee => employee.Id == me || employee.ManagerId == me);
+            return query.Where(employee => employee.Id == me || employee.ManagerId == me || employee.UserId == user.UserId);
 
-        return query.Where(employee => employee.Id == me);
+        return query.Where(employee => employee.Id == me || employee.UserId == user.UserId);
     }
 }

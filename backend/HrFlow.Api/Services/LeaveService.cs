@@ -173,10 +173,12 @@ public sealed class LeaveService(
     private async Task<Employee> ResolveWritableEmployeeAsync(Guid? employeeId, CancellationToken ct)
     {
         var id = employeeId ?? current.EmployeeId ?? throw new BusinessRuleException("Aucun employé n'est associé à ce compte.");
-        if (!HrAccess.CanManageEmployees(current.Roles) && current.EmployeeId != id)
-            throw new ForbiddenAccessException();
-        return await db.Employees.FirstOrDefaultAsync(employee => employee.Id == id, ct)
+        var employee = await db.Employees.FirstOrDefaultAsync(item => item.Id == id, ct)
             ?? throw new NotFoundException("Employé introuvable.");
+        var owns = current.EmployeeId == employee.Id || employee.UserId == current.UserId;
+        if (!HrAccess.CanManageEmployees(current.Roles) && !owns)
+            throw new ForbiddenAccessException();
+        return employee;
     }
 
     private async Task EnsureBalancesAsync(Guid employeeId, int year, CancellationToken ct)

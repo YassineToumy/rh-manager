@@ -115,6 +115,9 @@ public class LeaveRequest
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
     public int BusinessDays { get; set; }
+    public bool IsHalfDay { get; set; }
+    public string? HalfDayPart { get; set; }
+    public decimal UnpaidDays { get; set; }
     public string? Reason { get; set; }
     public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
     public string? DecisionComment { get; set; }
@@ -198,6 +201,64 @@ public class Notification
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ReadAt { get; set; }
     public bool EmailDispatched { get; set; }
+}
+
+public class EmployeeCompensation
+{
+    public Guid EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public string PositionNumber { get; set; } = string.Empty;
+    public string BankRib { get; set; } = string.Empty;
+    public decimal BaseSalary { get; set; }
+    public decimal Bonus { get; set; }
+    public string? ChipNumber { get; set; }
+    public decimal? ChipCredit { get; set; }
+}
+
+public class WorkMission
+{
+    public Guid Id { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Detail { get; set; }
+    public string Status { get; set; } = "Backlog";
+    public string? Comment { get; set; }
+    public DateOnly WeekStart { get; set; }
+    public string ManagerName { get; set; } = string.Empty;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class SalaryDeposit
+{
+    public Guid Id { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public bool IsPaid { get; set; }
+}
+
+public class SalaryAdvance
+{
+    public Guid Id { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public decimal Amount { get; set; }
+    public string? Reason { get; set; }
+    public string Status { get; set; } = "Pending";
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class WeeklyRating
+{
+    public Guid Id { get; set; }
+    public Guid EmployeeId { get; set; }
+    public Employee? Employee { get; set; }
+    public DateOnly WeekStart { get; set; }
+    public int Score { get; set; }
+    public string? Comment { get; set; }
+    public string ManagerName { get; set; } = string.Empty;
 }
 
 public class AuditEntry

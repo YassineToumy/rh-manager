@@ -23,6 +23,11 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityUser
     public DbSet<PerformanceReview> PerformanceReviews => Set<PerformanceReview>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
+    public DbSet<EmployeeCompensation> EmployeeCompensations => Set<EmployeeCompensation>();
+    public DbSet<SalaryDeposit> SalaryDeposits => Set<SalaryDeposit>();
+    public DbSet<SalaryAdvance> SalaryAdvances => Set<SalaryAdvance>();
+    public DbSet<WeeklyRating> WeeklyRatings => Set<WeeklyRating>();
+    public DbSet<WorkMission> WorkMissions => Set<WorkMission>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -32,8 +37,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityUser
         {
             entity.Property(user => user.Role).HasMaxLength(32).IsRequired().HasDefaultValue(AppRoles.Employee);
             entity.Property(user => user.IsApproved).HasDefaultValue(true);
+            entity.Property(user => user.CreatedAt).HasDefaultValueSql("NOW()");
             entity.HasIndex(user => user.Role);
             entity.HasIndex(user => user.IsApproved);
+            entity.HasIndex(user => user.CreatedAt);
+            entity.Property(user => user.Photo).HasColumnType("bytea");
+            entity.Property(user => user.PhotoContentType).HasMaxLength(64);
         });
 
         builder.Entity<Department>(entity =>
@@ -147,6 +156,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityUser
         builder.Entity<LeaveRequest>(entity =>
         {
             entity.Property(r => r.Reason).HasMaxLength(500);
+            entity.Property(r => r.HalfDayPart).HasMaxLength(16);
+            entity.Property(r => r.UnpaidDays).HasPrecision(6, 2);
             entity.Property(r => r.DecisionComment).HasMaxLength(500);
             entity.Property(r => r.DecidedByUserId).HasMaxLength(450);
             entity.Property(r => r.Status).HasConversion<string>().HasMaxLength(32);
@@ -224,6 +235,66 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityUser
                 .WithMany()
                 .HasForeignKey(r => r.ReviewerEmployeeId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<EmployeeCompensation>(entity =>
+        {
+            entity.HasKey(item => item.EmployeeId);
+            entity.Property(item => item.PositionNumber).HasMaxLength(40).IsRequired();
+            entity.Property(item => item.BankRib).HasMaxLength(40).IsRequired();
+            entity.Property(item => item.BaseSalary).HasPrecision(12, 2);
+            entity.Property(item => item.Bonus).HasPrecision(12, 2);
+            entity.Property(item => item.ChipNumber).HasMaxLength(32);
+            entity.Property(item => item.ChipCredit).HasPrecision(12, 2);
+            entity.HasOne(item => item.Employee)
+                .WithOne()
+                .HasForeignKey<EmployeeCompensation>(item => item.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SalaryDeposit>(entity =>
+        {
+            entity.HasIndex(item => new { item.EmployeeId, item.Year, item.Month }).IsUnique();
+            entity.HasOne(item => item.Employee)
+                .WithMany()
+                .HasForeignKey(item => item.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<SalaryAdvance>(entity =>
+        {
+            entity.Property(item => item.Amount).HasPrecision(12, 2);
+            entity.Property(item => item.Reason).HasMaxLength(500);
+            entity.Property(item => item.Status).HasMaxLength(32).IsRequired();
+            entity.HasOne(item => item.Employee)
+                .WithMany()
+                .HasForeignKey(item => item.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WeeklyRating>(entity =>
+        {
+            entity.Property(item => item.Comment).HasMaxLength(500);
+            entity.Property(item => item.ManagerName).HasMaxLength(160).IsRequired();
+            entity.HasIndex(item => new { item.EmployeeId, item.WeekStart }).IsUnique();
+            entity.HasOne(item => item.Employee)
+                .WithMany()
+                .HasForeignKey(item => item.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<WorkMission>(entity =>
+        {
+            entity.Property(item => item.Title).HasMaxLength(160).IsRequired();
+            entity.Property(item => item.Detail).HasMaxLength(1000);
+            entity.Property(item => item.Status).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.Comment).HasMaxLength(500);
+            entity.Property(item => item.ManagerName).HasMaxLength(160).IsRequired();
+            entity.HasIndex(item => new { item.EmployeeId, item.WeekStart });
+            entity.HasOne(item => item.Employee)
+                .WithMany()
+                .HasForeignKey(item => item.EmployeeId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Notification>(entity =>

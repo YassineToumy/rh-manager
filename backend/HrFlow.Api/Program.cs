@@ -44,6 +44,7 @@ builder.Services
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.MapInboundClaims = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -73,6 +74,8 @@ builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 builder.Services.AddScoped<IContractService, ContractService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<ILeaveService, LeaveService>();
+builder.Services.AddScoped<IEmployeeSpaceService, EmployeeSpaceService>();
+builder.Services.AddScoped<ITeamFollowUpService, TeamFollowUpService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IRecruitmentService, RecruitmentService>();
@@ -120,6 +123,7 @@ if (!app.Environment.IsEnvironment("Testing"))
     var database = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await database.Database.MigrateAsync();
     await DbSeeder.SeedAsync(scope.ServiceProvider);
+    await DbSeeder.EnsureEmployeeSpaceAsync(scope.ServiceProvider);
 }
 
 if (args.FirstOrDefault() == AdminAccountCommand.Name)

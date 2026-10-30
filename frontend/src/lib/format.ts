@@ -18,12 +18,15 @@ export const labels = {
   Accepted: "Acceptée",
   Open: "Ouvert",
   InProgress: "En cours",
-  Done: "Atteint",
+  Done: "Terminée",
+  Backlog: "Backlog",
   Cancelled: "Annulé",
   Administrateur: "Administrateur",
   ResponsableRH: "Responsable RH",
   Manager: "Manager",
   Employe: "Employé",
+  Morning: "Matin",
+  Afternoon: "Après-midi",
 } as const;
 
 export function label(value: string) {

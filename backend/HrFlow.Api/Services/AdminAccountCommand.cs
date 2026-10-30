@@ -35,7 +35,8 @@ public static class AdminAccountCommand
             IsActive = true,
             IsApproved = true,
             LockoutEnabled = true,
-            Role = AppRoles.Admin
+            Role = AppRoles.Admin,
+            CreatedAt = DateTimeOffset.UtcNow
         };
         var created = await users.CreateAsync(admin, options.Password);
         if (!created.Succeeded)
