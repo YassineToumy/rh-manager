@@ -14,6 +14,7 @@ public static class DbSeeder
 
     public static async Task SeedAsync(IServiceProvider services)
     {
+        var time = services.GetRequiredService<TimeProvider>();
         var db = services.GetRequiredService<AppDbContext>();
         var users = services.GetRequiredService<UserManager<ApplicationUser>>();
 
@@ -33,11 +34,11 @@ public static class DbSeeder
         var rtt = new LeaveType { Id = Guid.NewGuid(), Name = "RTT", AnnualAllowance = 10 };
         db.LeaveTypes.AddRange(paid, rtt);
 
-        var claireUser = await CreateUserAsync(users, "manager@hrflow.local", ManagerPassword, "Claire", "Martin", AppRoles.Manager);
-        var adamUser = await CreateUserAsync(users, "employe@hrflow.local", EmployeePassword, "Adam", "Bernard", AppRoles.Employee);
-        var sofiaUser = await CreateUserAsync(users, "sofia@hrflow.local", EmployeePassword, "Sofia", "Nguyen", AppRoles.Employee);
-        var inesUser = await CreateUserAsync(users, "rh@hrflow.local", RhPassword, "Inès", "Morel", AppRoles.Rh);
-        await CreateUserAsync(users, "admin@hrflow.local", AdminPassword, "Alex", "Admin", AppRoles.Admin);
+        var claireUser = await CreateUserAsync(users, "manager@hrflow.local", ManagerPassword, "Claire", "Martin", AppRoles.Manager, time);
+        var adamUser = await CreateUserAsync(users, "employe@hrflow.local", EmployeePassword, "Adam", "Bernard", AppRoles.Employee, time);
+        var sofiaUser = await CreateUserAsync(users, "sofia@hrflow.local", EmployeePassword, "Sofia", "Nguyen", AppRoles.Employee, time);
+        var inesUser = await CreateUserAsync(users, "rh@hrflow.local", RhPassword, "Inès", "Morel", AppRoles.Rh, time);
+        await CreateUserAsync(users, "admin@hrflow.local", AdminPassword, "Alex", "Admin", AppRoles.Admin, time);
 
         var claire = EmployeeOf("EMP-0001", "Claire", "Martin", "claire.martin@hrflow.local", new DateOnly(2022, 3, 1), "CDI", engineering.Id, managerPosition.Id, null, claireUser.Id);
         var adam = EmployeeOf("EMP-0002", "Adam", "Bernard", "adam.bernard@hrflow.local", new DateOnly(2024, 1, 15), "CDI", engineering.Id, developer.Id, claire.Id, adamUser.Id);
@@ -84,10 +85,10 @@ public static class DbSeeder
             BusinessDays = 2,
             Reason = "Pont de début novembre.",
             Status = LeaveStatus.Pending,
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-1)
+            CreatedAt = time.GetUtcNow().AddDays(-1)
         });
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         db.AttendanceRecords.AddRange(
             new AttendanceRecord { Id = Guid.NewGuid(), EmployeeId = claire.Id, Date = today, CheckIn = new TimeOnly(8, 42), Status = AttendanceStatus.Present },
             new AttendanceRecord { Id = Guid.NewGuid(), EmployeeId = adam.Id, Date = today, CheckIn = new TimeOnly(9, 18), Status = AttendanceStatus.Late });
@@ -100,7 +101,7 @@ public static class DbSeeder
             Requirements = "C#, ASP.NET Core, SQL.",
             PositionId = developer.Id,
             Status = JobOfferStatus.Published,
-            CreatedAt = DateTimeOffset.UtcNow.AddDays(-10)
+            CreatedAt = time.GetUtcNow().AddDays(-10)
         };
         db.JobOffers.Add(offer);
         db.Candidates.Add(new Candidate
@@ -111,7 +112,7 @@ public static class DbSeeder
             LastName = "Costa",
             Email = "lina.costa@example.com",
             Status = CandidateStatus.InReview,
-            AppliedAt = DateTimeOffset.UtcNow.AddDays(-2)
+            AppliedAt = time.GetUtcNow().AddDays(-2)
         });
 
         db.PerformanceGoals.Add(new PerformanceGoal
@@ -129,7 +130,7 @@ public static class DbSeeder
             Id = Guid.NewGuid(),
             EmployeeId = adam.Id,
             ReviewerEmployeeId = claire.Id,
-            ScheduledAt = DateTimeOffset.UtcNow.AddDays(3)
+            ScheduledAt = time.GetUtcNow().AddDays(3)
         });
 
         await db.SaveChangesAsync();
@@ -137,6 +138,7 @@ public static class DbSeeder
 
     public static async Task EnsureEmployeeSpaceAsync(IServiceProvider services)
     {
+        var time = services.GetRequiredService<TimeProvider>();
         var db = services.GetRequiredService<AppDbContext>();
         var employees = await db.Employees.Include(employee => employee.Manager).Where(employee => employee.UserId != null).ToListAsync();
         if (employees.Count == 0)
@@ -147,7 +149,7 @@ public static class DbSeeder
             .Where(user => userIds.Contains(user.Id) && user.Role == AppRoles.Employee)
             .Select(user => user.Id)
             .ToListAsync();
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var weekStart = today.AddDays(-(((int)today.DayOfWeek + 6) % 7));
 
         foreach (var employee in employees.Where(employee => employeeUserIds.Contains(employee.UserId!)))
@@ -215,7 +217,7 @@ public static class DbSeeder
                         Comment = "Priorité de la semaine.",
                         WeekStart = weekStart,
                         ManagerName = managerName,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        CreatedAt = time.GetUtcNow()
                     },
                     new WorkMission
                     {
@@ -227,7 +229,7 @@ public static class DbSeeder
                         Comment = "À prendre après le correctif.",
                         WeekStart = weekStart,
                         ManagerName = managerName,
-                        CreatedAt = DateTimeOffset.UtcNow
+                        CreatedAt = time.GetUtcNow()
                     });
             }
 
@@ -277,7 +279,8 @@ public static class DbSeeder
         string password,
         string firstName,
         string lastName,
-        string role)
+        string role,
+        TimeProvider time)
     {
         var user = new ApplicationUser
         {
@@ -289,7 +292,7 @@ public static class DbSeeder
             IsActive = true,
             LockoutEnabled = true,
             Role = role,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         var result = await users.CreateAsync(user, password);
         if (!result.Succeeded)

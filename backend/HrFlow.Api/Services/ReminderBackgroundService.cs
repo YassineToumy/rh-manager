@@ -5,11 +5,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HrFlow.Api.Services;
 
-public sealed class ReminderScanner(AppDbContext db, INotificationService notifications)
+public sealed class ReminderScanner(AppDbContext db, INotificationService notifications, TimeProvider time)
 {
     public async Task ScanAsync(CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var expired = await db.Contracts
             .Where(contract => contract.Status == ContractStatus.Active && contract.EndDate != null && contract.EndDate < today)
             .ToListAsync(ct);
@@ -42,8 +42,8 @@ public sealed class ReminderScanner(AppDbContext db, INotificationService notifi
             }
         }
 
-        var windowStart = DateTimeOffset.UtcNow.AddDays(-7);
-        var windowEnd = DateTimeOffset.UtcNow.AddDays(7);
+        var windowStart = time.GetUtcNow().AddDays(-7);
+        var windowEnd = time.GetUtcNow().AddDays(7);
         var reviews = await db.PerformanceReviews.AsNoTracking()
             .Include(review => review.Employee)
             .Include(review => review.Reviewer)
