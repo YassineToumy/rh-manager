@@ -16,6 +16,7 @@ public static class AdminAccountCommand
             Console.WriteLine("Usage: dotnet run --project backend/HrFlow.Api -- create-admin --email <email> --password <mot de passe> --first-name <prénom> --last-name <nom>");
             return 1;
         }
+        var time = services.GetRequiredService<TimeProvider>();
 
         await using var scope = services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -36,7 +37,7 @@ public static class AdminAccountCommand
             IsApproved = true,
             LockoutEnabled = true,
             Role = AppRoles.Admin,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         var created = await users.CreateAsync(admin, options.Password);
         if (!created.Succeeded)

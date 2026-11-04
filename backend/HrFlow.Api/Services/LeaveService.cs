@@ -19,7 +19,8 @@ public sealed class LeaveService(
     AppDbContext db,
     ICurrentUser current,
     INotificationService notifications,
-    IAuditWriter audit) : ILeaveService
+    IAuditWriter audit,
+    TimeProvider time) : ILeaveService
 {
     public async Task<IReadOnlyList<LeaveTypeDto>> TypesAsync(CancellationToken ct) =>
         await db.LeaveTypes.AsNoTracking()
@@ -30,7 +31,7 @@ public sealed class LeaveService(
     public async Task<IReadOnlyList<LeaveBalanceDto>> BalancesAsync(Guid? employeeId, CancellationToken ct)
     {
         var target = await ResolveReadableEmployeeAsync(employeeId, ct);
-        var year = DateTime.UtcNow.Year;
+        var year = time.GetUtcNow().Year;
         await EnsureBalancesAsync(target.Id, year, ct);
         await db.SaveChangesAsync(ct);
         return await BalanceDtosAsync(target.Id, year, ct);
@@ -93,7 +94,7 @@ public sealed class LeaveService(
             BusinessDays = days,
             Reason = request.Reason?.Trim(),
             Status = LeaveStatus.Pending,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow(),
         };
         db.LeaveRequests.Add(leave);
         audit.Write("leave.submit", "LeaveRequest", leave.Id.ToString(), $"{days} jours");
@@ -129,7 +130,7 @@ public sealed class LeaveService(
         leave.Status = request.Status;
         leave.DecisionComment = request.Comment?.Trim();
         leave.DecidedByUserId = current.UserId;
-        leave.DecidedAt = DateTimeOffset.UtcNow;
+        leave.DecidedAt = time.GetUtcNow();
 
         if (request.Status == LeaveStatus.Approved)
         {

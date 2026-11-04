@@ -13,12 +13,12 @@ public interface IEmployeeSpaceService
     Task<SalaryAdvanceDto> RequestAdvanceAsync(CreateAdvanceRequest request, CancellationToken ct);
 }
 
-public sealed class EmployeeSpaceService(AppDbContext db, ICurrentUser current, ILeaveService leave, IAuditWriter audit) : IEmployeeSpaceService
+public sealed class EmployeeSpaceService(AppDbContext db, ICurrentUser current, ILeaveService leave, IAuditWriter audit, TimeProvider time) : IEmployeeSpaceService
 {
     public async Task<EmployeeSpaceDto> GetAsync(CancellationToken ct)
     {
         var employee = await OwnEmployeeAsync(ct);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var compensation = await db.EmployeeCompensations.AsNoTracking()
             .FirstOrDefaultAsync(item => item.EmployeeId == employee.Id, ct);
         var deposit = await db.SalaryDeposits.AsNoTracking()
@@ -103,7 +103,7 @@ public sealed class EmployeeSpaceService(AppDbContext db, ICurrentUser current, 
         if (overlap)
             throw new BusinessRuleException("Cette période chevauche une demande déjà en cours ou acceptée.");
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var accrual = await AccrualAsync(employee, today, ct);
         var (_, unpaid) = LeaveRules.Charge(accrual.RemainingDays, requested);
         var leaveRequest = new LeaveRequest
@@ -119,7 +119,7 @@ public sealed class EmployeeSpaceService(AppDbContext db, ICurrentUser current, 
             UnpaidDays = unpaid,
             Reason = request.Reason.Trim(),
             Status = LeaveStatus.Pending,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         db.LeaveRequests.Add(leaveRequest);
         audit.Write("leave.submit", "LeaveRequest", leaveRequest.Id.ToString(), unpaid > 0 ? $"{requested} j dont {unpaid} non couverts" : $"{requested} j");
@@ -139,7 +139,7 @@ public sealed class EmployeeSpaceService(AppDbContext db, ICurrentUser current, 
             Amount = request.Amount,
             Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
             Status = "Pending",
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         db.SalaryAdvances.Add(advance);
         audit.Write("advance.request", "SalaryAdvance", advance.Id.ToString(), advance.Amount.ToString());

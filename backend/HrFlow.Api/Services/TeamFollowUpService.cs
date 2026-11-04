@@ -15,7 +15,7 @@ public interface ITeamFollowUpService
     Task<WeeklyRatingDto> SetRatingAsync(Guid employeeId, SetWeeklyRatingRequest request, CancellationToken ct);
 }
 
-public sealed class TeamFollowUpService(AppDbContext db, ICurrentUser current, IAuditWriter audit) : ITeamFollowUpService
+public sealed class TeamFollowUpService(AppDbContext db, ICurrentUser current, IAuditWriter audit, TimeProvider time) : ITeamFollowUpService
 {
     private static readonly string[] Statuses = ["Backlog", "InProgress", "Done"];
 
@@ -48,7 +48,7 @@ public sealed class TeamFollowUpService(AppDbContext db, ICurrentUser current, I
     public async Task<MissionDto> AddMissionAsync(Guid employeeId, CreateMissionRequest request, CancellationToken ct)
     {
         await RequireReportAsync(employeeId, ct);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var mission = new WorkMission
         {
             Id = Guid.NewGuid(),
@@ -59,7 +59,7 @@ public sealed class TeamFollowUpService(AppDbContext db, ICurrentUser current, I
             Comment = Clean(request.Comment),
             WeekStart = Monday(today),
             ManagerName = await ManagerNameAsync(ct),
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         db.WorkMissions.Add(mission);
         audit.Write("mission.create", "WorkMission", mission.Id.ToString(), mission.Title);

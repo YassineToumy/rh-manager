@@ -148,7 +148,7 @@ public class LeaveController(ILeaveService leave) : ControllerBase
 [ApiController]
 [Authorize]
 [Route("api/attendance")]
-public class AttendanceController(IAttendanceService attendance) : ControllerBase
+public class AttendanceController(IAttendanceService attendance, TimeProvider time) : ControllerBase
 {
     [HttpPost("check-in")]
     public async Task<ActionResult<AttendanceDto>> CheckIn(CancellationToken ct) => Ok(await attendance.CheckInAsync(ct));
@@ -167,7 +167,7 @@ public class AttendanceController(IAttendanceService attendance) : ControllerBas
     [HttpGet("report")]
     public async Task<ActionResult<AttendanceReportDto>> Report([FromQuery] AttendanceListQuery query, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var from = query.From ?? new DateOnly(today.Year, today.Month, 1);
         var to = query.To ?? today;
         return Ok(await attendance.ReportAsync(from, to, query.DepartmentId, ct));

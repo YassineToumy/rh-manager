@@ -15,7 +15,7 @@ public class ApplicationUser : IdentityUser
     public bool IsApproved { get; set; } = true;
 
     /// <summary>Moment de la création du compte, utilisé par le filtre administrateur.</summary>
-    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; } 
 
     /// <summary>
     /// Un seul rôle par compte : Administrateur, ResponsableRH, Manager ou Employe.

@@ -36,7 +36,8 @@ public sealed class AuthService(
     AppDbContext db,
     ICurrentUser current,
     IEmailSender email,
-    IOptions<JwtOptions> jwtOptions) : IAuthService
+    IOptions<JwtOptions> jwtOptions,
+    TimeProvider time) : IAuthService
 {
     private readonly JwtOptions _jwt = jwtOptions.Value;
 
@@ -65,7 +66,7 @@ public sealed class AuthService(
         {
             var profileForChallenge = await BuildProfileAsync(user, ct);
             if (string.IsNullOrWhiteSpace(request.TwoFactorCode))
-                return new LoginResponse(string.Empty, DateTime.UtcNow, profileForChallenge, true);
+                return new LoginResponse(string.Empty, time.GetUtcNow().UtcDateTime, profileForChallenge, true);
 
             var validCode = await users.VerifyTwoFactorTokenAsync(
                 user,
@@ -80,7 +81,7 @@ public sealed class AuthService(
 
         await users.ResetAccessFailedCountAsync(user);
         var profile = await BuildProfileAsync(user, ct);
-        var expires = DateTime.UtcNow.AddMinutes(_jwt.ExpiresMinutes);
+        var expires = time.GetUtcNow().UtcDateTime.AddMinutes(_jwt.ExpiresMinutes);
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),
@@ -120,7 +121,7 @@ public sealed class AuthService(
             IsApproved = false,
             LockoutEnabled = true,
             Role = request.Role,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         var created = await users.CreateAsync(user, request.Password);
         if (!created.Succeeded)

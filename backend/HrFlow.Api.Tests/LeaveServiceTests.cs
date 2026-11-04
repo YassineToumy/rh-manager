@@ -86,6 +86,7 @@ public class LeaveServiceTests
         services.AddSingleton<TestUser>();
         services.AddSingleton<ICurrentUser>(provider => provider.GetRequiredService<TestUser>());
         services.AddSingleton<IEmailSender, NullEmailSender>();
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddScoped<IAuditWriter, AuditWriter>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<LeaveService>();

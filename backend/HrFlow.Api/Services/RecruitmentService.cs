@@ -21,7 +21,8 @@ public sealed class RecruitmentService(
     ICurrentUser current,
     IFileStorage storage,
     INotificationService notifications,
-    IAuditWriter audit) : IRecruitmentService
+    IAuditWriter audit,
+    TimeProvider time) : IRecruitmentService
 {
     public async Task<IReadOnlyList<JobOfferDto>> ListOffersAsync(CancellationToken ct)
     {
@@ -43,7 +44,7 @@ public sealed class RecruitmentService(
             Requirements = request.Requirements.Trim(),
             PositionId = request.PositionId,
             Status = request.Status,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         db.JobOffers.Add(offer);
         audit.Write("offer.create", "JobOffer", offer.Id.ToString(), offer.Title);
@@ -115,7 +116,7 @@ public sealed class RecruitmentService(
             CvStoredFileName = stored,
             CvOriginalFileName = original,
             Status = CandidateStatus.Received,
-            AppliedAt = DateTimeOffset.UtcNow
+            AppliedAt = time.GetUtcNow()
         };
         db.Candidates.Add(candidate);
         audit.Write("candidate.create", "Candidate", candidate.Id.ToString(), candidate.Email);
