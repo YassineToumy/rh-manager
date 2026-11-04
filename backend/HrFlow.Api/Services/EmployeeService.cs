@@ -15,7 +15,7 @@ public interface IEmployeeService
     Task ArchiveAsync(Guid id, CancellationToken ct);
 }
 
-public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAuditWriter audit) : IEmployeeService
+public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAuditWriter audit ,TimeProvider time) : IEmployeeService
 {
     public async Task<PagedResult<EmployeeDto>> ListAsync(EmployeeListQuery query, CancellationToken ct)
     {
@@ -60,7 +60,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
             .FirstOrDefaultAsync(item => item.Id == id, ct)
             ?? throw new NotFoundException("Employé introuvable.");
 
-        var year = DateTime.UtcNow.Year;
+        var year = time.GetUtcNow().Year;
         await EnsureBalancesAsync(employee.Id, year, ct);
         await db.SaveChangesAsync(ct);
 
@@ -74,7 +74,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
             .Select(group => new { TypeId = group.Key, Days = group.Sum(request => request.BusinessDays) })
             .ToListAsync(ct);
 
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var balanceDtos = balances.Select(balance =>
         {
             var held = pending.FirstOrDefault(item => item.TypeId == balance.LeaveTypeId)?.Days ?? 0;
@@ -126,7 +126,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
         };
         db.Employees.Add(employee);
         AddHistory(employee.Id, "Embauche", $"Embauche au poste {position.Title}, département {department.Name}.");
-        await EnsureBalancesAsync(employee.Id, DateTime.UtcNow.Year, ct);
+        await EnsureBalancesAsync(employee.Id, time.GetUtcNow().Year, ct);
         audit.Write("employee.create", "Employee", employee.Id.ToString(), employee.InternalCode);
         await db.SaveChangesAsync(ct);
         employee.Department = department;
@@ -187,7 +187,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
             throw new BusinessRuleException("Réaffectez les collaborateurs de cette personne avant d'archiver son dossier.");
 
         employee.Status = EmployeeStatus.Archived;
-        employee.ArchivedAt = DateTimeOffset.UtcNow;
+        employee.ArchivedAt = time.GetUtcNow();
         AddHistory(employee.Id, "Archivage", "Dossier archivé. Les données sont conservées.");
         audit.Write("employee.archive", "Employee", employee.Id.ToString(), employee.InternalCode);
         await db.SaveChangesAsync(ct);
@@ -262,7 +262,7 @@ public sealed class EmployeeService(AppDbContext db, ICurrentUser current, IAudi
         {
             Id = Guid.NewGuid(),
             EmployeeId = employeeId,
-            OccurredAt = DateTimeOffset.UtcNow,
+            OccurredAt = time.GetUtcNow(),
             Kind = kind,
             Description = description
         });

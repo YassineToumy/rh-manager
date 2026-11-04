@@ -13,11 +13,11 @@ public interface IContractService
     Task<ContractDto> UpdateAsync(Guid id, UpsertContractRequest request, CancellationToken ct);
 }
 
-public sealed class ContractService(AppDbContext db, ICurrentUser current, IAuditWriter audit) : IContractService
+public sealed class ContractService(AppDbContext db, ICurrentUser current, IAuditWriter audit ,TimeProvider time) : IContractService
 {
     public async Task<IReadOnlyList<ContractDto>> ListAsync(ContractListQuery query, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var contracts = db.Contracts.AsNoTracking().Include(contract => contract.Employee).AsQueryable();
         contracts = contracts.Where(contract => EmployeeScope.Visible(db.Employees, current).Select(employee => employee.Id).Contains(contract.EmployeeId));
 
@@ -59,14 +59,14 @@ public sealed class ContractService(AppDbContext db, ICurrentUser current, IAudi
         {
             Id = Guid.NewGuid(),
             EmployeeId = employee.Id,
-            OccurredAt = DateTimeOffset.UtcNow,
+            OccurredAt = time.GetUtcNow(),
             Kind = "Contrat",
             Description = $"Contrat {contract.Type} à partir du {contract.StartDate:yyyy-MM-dd}."
         });
         audit.Write("contract.create", "Contract", contract.Id.ToString(), employee.InternalCode);
         await db.SaveChangesAsync(ct);
         contract.Employee = employee;
-        return Mapping.ToDto(contract, DateOnly.FromDateTime(DateTime.UtcNow));
+        return Mapping.ToDto(contract, DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime));
     }
 
     public async Task<ContractDto> UpdateAsync(Guid id, UpsertContractRequest request, CancellationToken ct)
@@ -86,7 +86,7 @@ public sealed class ContractService(AppDbContext db, ICurrentUser current, IAudi
             contract.Employee.ContractType = contract.Type;
         audit.Write("contract.update", "Contract", contract.Id.ToString(), contract.Status.ToString());
         await db.SaveChangesAsync(ct);
-        return Mapping.ToDto(contract, DateOnly.FromDateTime(DateTime.UtcNow));
+        return Mapping.ToDto(contract, DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime));
     }
 
     private async Task<Employee> RequireEmployeeAsync(Guid id, CancellationToken ct) =>

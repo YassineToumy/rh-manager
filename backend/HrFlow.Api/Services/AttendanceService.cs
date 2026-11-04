@@ -20,18 +20,19 @@ public sealed class AttendanceService(
     AppDbContext db,
     ICurrentUser current,
     IOptions<AttendanceOptions> options,
-    IAuditWriter audit) : IAttendanceService
+    IAuditWriter audit,
+    TimeProvider time) : IAttendanceService
 {
     private readonly TimeOnly _workdayStart = options.Value.StartTime;
 
     public async Task<AttendanceDto> CheckInAsync(CancellationToken ct)
     {
         var employee = await CurrentEmployeeAsync(ct);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         if (await db.AttendanceRecords.AnyAsync(record => record.EmployeeId == employee.Id && record.Date == today, ct))
             throw new BusinessRuleException("Une présence est déjà enregistrée pour aujourd'hui.");
 
-        var now = TimeOnly.FromDateTime(DateTime.Now);
+        var now = TimeOnly.FromDateTime(time.GetLocalNow().DateTime);
         var record = new AttendanceRecord
         {
             Id = Guid.NewGuid(),
@@ -48,13 +49,13 @@ public sealed class AttendanceService(
     public async Task<AttendanceDto> CheckOutAsync(CancellationToken ct)
     {
         var employee = await CurrentEmployeeAsync(ct);
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var record = await db.AttendanceRecords.FirstOrDefaultAsync(item => item.EmployeeId == employee.Id && item.Date == today, ct)
             ?? throw new BusinessRuleException("Aucun pointage d'arrivée pour aujourd'hui.");
         if (record.CheckOut is not null)
             throw new BusinessRuleException("Le départ est déjà enregistré.");
 
-        var now = TimeOnly.FromDateTime(DateTime.Now);
+        var now = TimeOnly.FromDateTime(time.GetLocalNow().DateTime);
         if (!AttendanceRules.IsCheckoutValid(record.CheckIn, now))
             throw new BusinessRuleException("L'heure de départ ne peut pas précéder l'arrivée.");
         record.CheckOut = now;
@@ -106,7 +107,7 @@ public sealed class AttendanceService(
 
     public async Task<AttendanceReportDto> ReportAsync(DateOnly from, DateOnly to, Guid? departmentId, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         if (to > today)
             to = today;
         if (to < from)
@@ -179,9 +180,9 @@ public sealed class AttendanceService(
         record.Status,
         record.Note);
 
-    private static (DateOnly From, DateOnly To) Range(DateOnly? from, DateOnly? to)
+    private  (DateOnly From, DateOnly To) Range(DateOnly? from, DateOnly? to )
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         return (from ?? new DateOnly(today.Year, today.Month, 1), to ?? today);
     }
 }
