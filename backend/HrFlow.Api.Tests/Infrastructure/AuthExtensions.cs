@@ -23,4 +23,20 @@ public static class AuthExtensions
 
         return client;
     }
+    public static Task<HttpClient> CreateClientAsAsync(this HrFlowApiFactory factory, Role role)
+    {
+        if (role == Role.Anonymous)
+            return Task.FromResult(factory.CreateClient());
+        var user = role switch
+        {
+            Role.Rh => TestUsers.Rh,
+            Role.Employee => TestUsers.Employee,
+            Role.Manager => TestUsers.Manager,
+            Role.Admin => TestUsers.Admin,
+            _ => throw new ArgumentOutOfRangeException(nameof(role), role, null)
+
+        };
+
+        return factory.CreateClientAsAsync(user);
+    }
 }

@@ -9,7 +9,7 @@ namespace HrFlow.Api.Tests.Endpoints;
 [Collection("api")]
 public class EmployeesEndpointTests(HrFlowApiFactory factory)
 {
-    
+
 
     [Fact]
     public async Task Rh_can_list_employees()
