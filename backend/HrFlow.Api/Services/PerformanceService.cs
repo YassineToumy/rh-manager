@@ -16,7 +16,7 @@ public interface IPerformanceService
     Task<ReviewDto> CompleteReviewAsync(Guid id, CompleteReviewRequest request, CancellationToken ct);
 }
 
-public sealed class PerformanceService(AppDbContext db, ICurrentUser current, IAuditWriter audit) : IPerformanceService
+public sealed class PerformanceService(AppDbContext db, ICurrentUser current, IAuditWriter audit , TimeProvider time) : IPerformanceService
 {
     public async Task<IReadOnlyList<GoalDto>> ListGoalsAsync(Guid? employeeId, CancellationToken ct)
     {
@@ -105,7 +105,7 @@ public sealed class PerformanceService(AppDbContext db, ICurrentUser current, IA
         if (review.CompletedAt is not null)
             throw new BusinessRuleException("Cette évaluation est déjà terminée.");
         review.Comment = request.Comment.Trim();
-        review.CompletedAt = DateTimeOffset.UtcNow;
+        review.CompletedAt = time.GetUtcNow();
         audit.Write("review.complete", "PerformanceReview", review.Id.ToString(), null);
         await db.SaveChangesAsync(ct);
         return ToDto(review);

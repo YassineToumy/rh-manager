@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace HrFlow.Api.Services;
 
-public sealed class AuditWriter(AppDbContext db, ICurrentUser current) : IAuditWriter
+public sealed class AuditWriter(AppDbContext db, ICurrentUser current, TimeProvider time) : IAuditWriter
 {
     public void Write(string action, string entityName, string entityId, string? details)
     {
         db.AuditEntries.Add(new AuditEntry
         {
-            OccurredAt = DateTimeOffset.UtcNow,
+            OccurredAt = time.GetUtcNow(),
             ActorUserId = current.UserId ?? "system",
             Action = action,
             EntityName = entityName,
@@ -25,7 +25,8 @@ public sealed class AuditWriter(AppDbContext db, ICurrentUser current) : IAuditW
 public sealed class NotificationService(
     AppDbContext db,
     ICurrentUser current,
-    IEmailSender email) : INotificationService
+    IEmailSender email,
+    TimeProvider time) : INotificationService
 {
     public async Task NotifyAsync(string userId, string dedupKey, string title, string body, CancellationToken ct)
     {
@@ -39,7 +40,7 @@ public sealed class NotificationService(
             Title = title,
             Body = body,
             DedupKey = dedupKey,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         db.Notifications.Add(notification);
 
@@ -78,7 +79,7 @@ public sealed class NotificationService(
         var userId = current.UserId ?? throw new ForbiddenAccessException();
         var notification = await db.Notifications.FirstOrDefaultAsync(n => n.Id == id && n.RecipientUserId == userId, ct)
             ?? throw new NotFoundException("Notification introuvable.");
-        notification.ReadAt ??= DateTimeOffset.UtcNow;
+        notification.ReadAt ??= time.GetUtcNow();
         await db.SaveChangesAsync(ct);
     }
 }

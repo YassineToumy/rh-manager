@@ -17,7 +17,8 @@ public sealed class DocumentService(
     AppDbContext db,
     ICurrentUser current,
     IFileStorage storage,
-    IAuditWriter audit) : IDocumentService
+    IAuditWriter audit,
+    TimeProvider time) : IDocumentService
 {
     public async Task<IReadOnlyList<DocumentDto>> ListAsync(Guid? employeeId, CancellationToken ct)
     {
@@ -47,7 +48,7 @@ public sealed class DocumentService(
             OriginalFileName = Path.GetFileName(originalFileName),
             StoredFileName = stored.StoredFileName,
             ContentType = stored.ContentType,
-            UploadedAt = DateTimeOffset.UtcNow,
+            UploadedAt = time.GetUtcNow(),
             UploadedByUserId = current.UserId ?? "system"
         };
         db.Documents.Add(document);

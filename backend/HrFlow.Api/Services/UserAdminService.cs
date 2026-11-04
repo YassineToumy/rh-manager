@@ -23,7 +23,8 @@ public sealed class UserAdminService(
     UserManager<ApplicationUser> users,
     AppDbContext db,
     ICurrentUser current,
-    IAuditWriter audit) : IUserAdminService
+    IAuditWriter audit,
+    TimeProvider time) : IUserAdminService
 {
     public async Task<IReadOnlyList<AccountDto>> ListAsync(AccountQuery query, CancellationToken ct)
     {
@@ -66,7 +67,7 @@ public sealed class UserAdminService(
             LockoutEnabled = true,
             EmailConfirmed = true,
             Role = request.Role,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = time.GetUtcNow()
         };
         var created = await users.CreateAsync(user, request.Password);
         if (!created.Succeeded)

@@ -11,11 +11,11 @@ public interface IDashboardService
     Task<DashboardDto> GetAsync(DashboardQuery query, CancellationToken ct);
 }
 
-public sealed class DashboardService(AppDbContext db, ICurrentUser current, IAttendanceService attendance) : IDashboardService
+public sealed class DashboardService(AppDbContext db, ICurrentUser current, IAttendanceService attendance , TimeProvider time) : IDashboardService
 {
     public async Task<DashboardDto> GetAsync(DashboardQuery query, CancellationToken ct)
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var today = DateOnly.FromDateTime(time.GetUtcNow().UtcDateTime);
         var from = query.From ?? new DateOnly(today.Year, today.Month, 1);
         var to = query.To ?? today;
         var visible = EmployeeScope.Visible(db.Employees.AsNoTracking(), current);
